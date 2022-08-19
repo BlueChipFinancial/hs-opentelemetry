@@ -102,15 +102,15 @@ encodeSpanContext s = do
   pure $ map (first tag) tags
   where
     tag :: ByteString -> CI ByteString
-    tag = CI.mk . ("X-B3" <>)
+    tag = CI.mk . ("X-B3-" <>)
 
 -- | Propagate trace context information via headers using the w3c specification format
 --
 -- @since 0.0.1.0
-w3cTraceContextPropagator :: Propagator Ctxt.Context RequestHeaders ResponseHeaders
-w3cTraceContextPropagator = Propagator {..}
+b3MultiPropagator :: Propagator Ctxt.Context RequestHeaders ResponseHeaders
+b3MultiPropagator = Propagator {..}
   where
-    propagatorNames = ["tracecontext"]
+    propagatorNames = ["b3multi"]
 
     extractor hs c = do
       let mspanContext = do

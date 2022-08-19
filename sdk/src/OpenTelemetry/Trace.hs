@@ -148,6 +148,7 @@ import qualified Data.Text as T
 import OpenTelemetry.Context (Context)
 import Network.HTTP.Types.Header
 import OpenTelemetry.Propagator.W3CTraceContext (w3cTraceContextPropagator)
+import OpenTelemetry.Propagator.B3TraceContext (b3MultiPropagator)
 import OpenTelemetry.Propagator.W3CBaggage (w3cBaggagePropagator)
 import OpenTelemetry.Propagator (Propagator)
 import System.Environment (lookupEnv)
@@ -268,7 +269,7 @@ knownPropagators =
   [ ("tracecontext", w3cTraceContextPropagator)
   , ("baggage", w3cBaggagePropagator)
   , ("b3", error "B3 not yet implemented")
-  , ("b3multi", error "B3 multi not yet implemented")
+  , ("b3multi", b3MultiPropagator)
   , ("jaeger", error "Jaeger not yet implemented")
   ]
 
@@ -334,7 +335,7 @@ detectPropagators = do
   if propagatorsInEnv == Just ["none"]
     then pure mempty
     else do
-      let envPropagators = fromMaybe ["tracecontext", "baggage"] propagatorsInEnv
+      let envPropagators = fromMaybe ["tracecontext", "baggage", "b3multi"] propagatorsInEnv
           propagatorsAndRegistryEntry = map (\k -> maybe (Left k) Right $ lookup k registeredPropagators) envPropagators
           (_notFound, propagators) = partitionEithers propagatorsAndRegistryEntry
       -- TODO log warn notFound

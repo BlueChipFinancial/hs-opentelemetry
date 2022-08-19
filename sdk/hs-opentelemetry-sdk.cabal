@@ -75,6 +75,7 @@ library
     , bytestring
     , hs-opentelemetry-api ==0.0.3.*
     , hs-opentelemetry-exporter-otlp ==0.0.1.*
+    , hs-opentelemetry-propagator-b3 ==0.0.1.*
     , hs-opentelemetry-propagator-w3c ==0.0.1.*
     , http-types
     , mwc-random
@@ -109,6 +110,7 @@ test-suite hs-opentelemetry-sdk-test
     , clock
     , hs-opentelemetry-api
     , hs-opentelemetry-exporter-otlp ==0.0.1.*
+    , hs-opentelemetry-propagator-b3 ==0.0.1.*
     , hs-opentelemetry-propagator-w3c ==0.0.1.*
     , hs-opentelemetry-sdk
     , hspec
