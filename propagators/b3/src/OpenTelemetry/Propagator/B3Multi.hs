@@ -59,23 +59,20 @@ data TraceParent = TraceParent
   }
   deriving (Show)
 
+data B3Info = B3Info
+  { traceIdB :: TraceId,
+    spanIdB :: SpanId,
+    parentSpanId :: Maybe SpanId,
+    sampled :: Maybe ByteString
+  }
+
 -- | Attempt to decode a 'SpanContext' from B3 Headers
 --
 -- @since 0.0.1.0
 decodeSpanContext ::
-  -- | @TraceId@ header value
-  ByteString ->
-  -- | @SpanId@ header value
-  ByteString ->
-  -- | Optional @ParentSpanId@ header value
-  Maybe ByteString ->
-  -- | Optional @Sampled@ header value
-  Maybe ByteString ->
+  B3Info ->
   Maybe SpanContext
-decodeSpanContext traceIdHeader spanIdHeader _ sampled = do
-  -- TODO: does not use ParentSpanId
-  traceId' <- either (const Nothing) pure . baseEncodedToTraceId Base16 $ traceIdHeader
-  spanId' <- either (const Nothing) pure . baseEncodedToSpanId Base16 $ spanIdHeader
+decodeSpanContext (B3Info traceId' spanId' _ sampled) = do
   -- Sample if Debug, or if we don't have information yet
   let flags = (if sampled == Just "0" then unsetSampled else setSampled) defaultTraceFlags
   pure $
@@ -86,6 +83,17 @@ decodeSpanContext traceIdHeader spanIdHeader _ sampled = do
         spanId = spanId',
         traceState = empty
       }
+
+decodeB3Headers :: RequestHeaders -> Maybe B3Info
+decodeB3Headers hs = do
+  traceId' <- decode baseEncodedToTraceId =<< Prelude.lookup "X-B3-TraceId" hs
+  spanId' <- decode baseEncodedToSpanId =<< Prelude.lookup "X-B3-SpanId" hs
+  parentSpanId' <- decode baseEncodedToSpanId <$> Prelude.lookup "X-B3-ParentSpanId" hs
+  let sampled = Prelude.lookup "X-B3-Sampled" hs
+  pure $ B3Info traceId' spanId' parentSpanId' sampled
+  where
+    decode :: (Base -> ByteString -> Either String a) -> ByteString -> Maybe a
+    decode decoder = either (const Nothing) pure . decoder Base16
 
 -- | Encoded the given 'Span' into a @traceparent@, @tracestate@ tuple.
 --
@@ -104,7 +112,7 @@ encodeSpanContext s = do
     tag :: ByteString -> CI ByteString
     tag = CI.mk . ("X-B3-" <>)
 
--- | Propagate trace context information via headers using the w3c specification format
+-- | Propagate trace context information via headers using the b3 specification format
 --
 -- @since 0.0.1.0
 b3MultiPropagator :: Propagator Ctxt.Context RequestHeaders ResponseHeaders
@@ -113,12 +121,7 @@ b3MultiPropagator = Propagator {..}
     propagatorNames = ["b3multi"]
 
     extractor hs c = do
-      let mspanContext = do
-            traceIdHeader <- Prelude.lookup "X-B3-TraceId" hs
-            spanIdHeader <- Prelude.lookup "X-B3-SpanId" hs
-            let parentSpanId = Prelude.lookup "X-B3-ParentSpanId" hs
-                sampled = Prelude.lookup "X-B3-Sampled" hs
-            decodeSpanContext traceIdHeader spanIdHeader parentSpanId sampled
+      let mspanContext = decodeSpanContext =<< decodeB3Headers hs
       pure $! case mspanContext of
         Nothing -> c
         Just s -> Ctxt.insertSpan (wrapSpanContext s) c
