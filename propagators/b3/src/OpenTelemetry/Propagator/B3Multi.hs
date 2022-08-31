@@ -26,7 +26,7 @@
 --
 -- This module therefore provides support for tracing context propagation in accordance with the multi-header B3 tracing context
 -- propagation specifications: https://www.w3.org/TR/trace-context/
-module OpenTelemetry.Propagator.B3TraceContext where
+module OpenTelemetry.Propagator.B3Multi where
 
 import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
